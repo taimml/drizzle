@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { desc, eq, isNull } from "drizzle-orm";
 import { db } from "./db/index";
 import { users, products, favorites, cart } from "./db/schema";
 
@@ -34,7 +34,9 @@ export async function updateUser(id: string, userData: {
 }
 
 export async function getUsers() {
-    return await db.select().from(users);
+    return await db.query.users.findMany({
+        orderBy: desc(users.createdAt)
+    })
 }
 
 
@@ -51,7 +53,10 @@ export async function createProduct(productData: {
 
 export async function deleteProduct(id: string) {
     const [deletedProduct] = await db
-        .delete(products)
+        .update(favorites)
+        .set({
+            deletedAt: new Date()
+        })
         .where(eq(products.id, id))
         .returning();
     return deletedProduct;
@@ -71,11 +76,10 @@ export async function updateProducts(id: string, productData: {
 }
 
 export async function getProducts() {
-    return await db.select().from(products);
+    return await db.query.products.findMany({
+        where: isNull(products.deletedAt),
+    });
 }
-
-
-
 
 
 
@@ -84,7 +88,7 @@ export async function getUsersWithFavoritesProducts() {
         with: {
             favorites: {
                 with: {
-                    products: true,
+                    product: true
                 },
             },
         },
